@@ -1,0 +1,25 @@
+[project]
+name = "stock-management"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "mida-hub", email = "rusuden0106@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=2.0.0",
+    "matplotlib>=3.11.2",
+    "mplfinance>=0.12.10b0",
+    "pandas>=3.1.1",
+    "python-dotenv>=1.2.4",
+    "rich>=15.0.0",
+    "six>=1.17.0",
+    "yfinance>=1.8.0",
+]
+
+[project.scripts]
+stock-management = "stock_management:main"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
