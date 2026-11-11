@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# DuckDB, local data, and generated reports
+data/
+reports/
+*.duckdb
+*.duckdb.wal
+
+# Environment variables
+.env
+
+# Personal trade CSVs (avoid accidental commit)
+*.csv
