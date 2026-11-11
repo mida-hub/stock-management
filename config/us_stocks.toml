@@ -1,0 +1,189 @@
+# 米国株 監視ユニバース ＆ スクリーニング設定ファイル
+# 銘柄を追加・削除したい場合は [[stocks]] ブロックを編集してください。
+
+[screening]
+# コア戦略（押し目スイング）候補の抽出閾値
+sma_25_dev_min = -6.0   # 25日移動平均線からの乖離率 下限(%)
+sma_25_dev_max = 5.0    # 25日移動平均線からの乖離率 上限(%)
+rsi_14_min = 30.0       # RSI(14) 下限
+rsi_14_max = 65.0       # RSI(14) 上限
+
+# ==========================================
+# 1. Mega Tech (Magnificent 7)
+# ==========================================
+[[stocks]]
+code = "AAPL"
+name = "Apple Inc."
+exchange = "NASDAQ"
+sector = "Technology"
+category = "US Mega Tech"
+
+[[stocks]]
+code = "MSFT"
+name = "Microsoft Corporation"
+exchange = "NASDAQ"
+sector = "Technology"
+category = "US Mega Tech"
+
+[[stocks]]
+code = "NVDA"
+name = "NVIDIA Corporation"
+exchange = "NASDAQ"
+sector = "Semiconductors"
+category = "US Mega Tech"
+
+[[stocks]]
+code = "AMZN"
+name = "Amazon.com Inc."
+exchange = "NASDAQ"
+sector = "Consumer Cyclical"
+category = "US Mega Tech"
+
+[[stocks]]
+code = "GOOGL"
+name = "Alphabet Inc."
+exchange = "NASDAQ"
+sector = "Communication Services"
+category = "US Mega Tech"
+
+[[stocks]]
+code = "META"
+name = "Meta Platforms Inc."
+exchange = "NASDAQ"
+sector = "Communication Services"
+category = "US Mega Tech"
+
+[[stocks]]
+code = "TSLA"
+name = "Tesla Inc."
+exchange = "NASDAQ"
+sector = "Consumer Cyclical"
+category = "US Mega Tech"
+
+# ==========================================
+# 2. Semiconductors & AI Hardware
+# ==========================================
+[[stocks]]
+code = "AVGO"
+name = "Broadcom Inc."
+exchange = "NASDAQ"
+sector = "Semiconductors"
+category = "US Semiconductors"
+
+[[stocks]]
+code = "AMD"
+name = "Advanced Micro Devices"
+exchange = "NASDAQ"
+sector = "Semiconductors"
+category = "US Semiconductors"
+
+[[stocks]]
+code = "TSM"
+name = "Taiwan Semiconductor"
+exchange = "NYSE"
+sector = "Semiconductors"
+category = "US Semiconductors"
+
+[[stocks]]
+code = "ARM"
+name = "Arm Holdings plc"
+exchange = "NASDAQ"
+sector = "Semiconductors"
+category = "US Semiconductors"
+
+[[stocks]]
+code = "MU"
+name = "Micron Technology"
+exchange = "NASDAQ"
+sector = "Semiconductors"
+category = "US Semiconductors"
+
+# ==========================================
+# 3. Cloud, Enterprise AI & Cybersecurity
+# ==========================================
+[[stocks]]
+code = "CRM"
+name = "Salesforce Inc."
+exchange = "NYSE"
+sector = "Software"
+category = "US Cloud/AI"
+
+[[stocks]]
+code = "ORCL"
+name = "Oracle Corporation"
+exchange = "NYSE"
+sector = "Software"
+category = "US Cloud/AI"
+
+[[stocks]]
+code = "NOW"
+name = "ServiceNow Inc."
+exchange = "NYSE"
+sector = "Software"
+category = "US Cloud/AI"
+
+[[stocks]]
+code = "SNOW"
+name = "Snowflake Inc."
+exchange = "NYSE"
+sector = "Software"
+category = "US Cloud/AI"
+
+[[stocks]]
+code = "PLTR"
+name = "Palantir Technologies"
+exchange = "NASDAQ"
+sector = "Software"
+category = "US Cloud/AI"
+
+[[stocks]]
+code = "PANW"
+name = "Palo Alto Networks"
+exchange = "NASDAQ"
+sector = "Cybersecurity"
+category = "US Cloud/AI"
+
+[[stocks]]
+code = "CRWD"
+name = "CrowdStrike Holdings"
+exchange = "NASDAQ"
+sector = "Cybersecurity"
+category = "US Cloud/AI"
+
+# ==========================================
+# 4. Large Quality Growth & Value
+# ==========================================
+[[stocks]]
+code = "NFLX"
+name = "Netflix Inc."
+exchange = "NASDAQ"
+sector = "Communication Services"
+category = "US Large Growth"
+
+[[stocks]]
+code = "V"
+name = "Visa Inc."
+exchange = "NYSE"
+sector = "Financial Services"
+category = "US Quality Value"
+
+[[stocks]]
+code = "JPM"
+name = "JPMorgan Chase & Co."
+exchange = "NYSE"
+sector = "Financial Services"
+category = "US Quality Value"
+
+[[stocks]]
+code = "LLY"
+name = "Eli Lilly and Company"
+exchange = "NYSE"
+sector = "Healthcare"
+category = "US Quality Growth"
+
+[[stocks]]
+code = "COST"
+name = "Costco Wholesale"
+exchange = "NASDAQ"
+sector = "Consumer Defensive"
+category = "US Quality Growth"
