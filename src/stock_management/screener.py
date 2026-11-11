@@ -2,6 +2,7 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 from stock_management.db import get_connection
+from stock_management.ingest_us import DEFAULT_US_CONFIG_PATH, load_us_config
 
 console = Console(width=140)
 
@@ -14,7 +15,8 @@ def get_latest_technical_snapshot(market: str | None = None) -> pd.DataFrame:
             *,
             ROW_NUMBER() OVER (PARTITION BY code ORDER BY date DESC) AS rn
         FROM v_technical_indicators
-        {where_clause}
+        WHERE market IS NOT NULL
+        {"AND market = '" + market + "'" if market else ""}
     )
     SELECT
         code,
@@ -45,15 +47,20 @@ def get_latest_technical_snapshot(market: str | None = None) -> pd.DataFrame:
 def screen_core_swing_candidates(market: str | None = None) -> pd.DataFrame:
     """
     コア戦略（大型主力スイング）向けのスクリーニング:
-    - 中長期トレンド: close >= sma_200 (または sma_75 が上向き)
-    - 押し目・反発圏: 25日移動平均線からの乖離が -5% 〜 +5% 以内、または RSI(14) が 35 〜 60
+    config/us_stocks.toml の [screening] セクションの閾値を使用
     """
     df = get_latest_technical_snapshot(market=market)
     if df.empty:
         return df
 
+    cfg = load_us_config(DEFAULT_US_CONFIG_PATH).get("screening", {})
+    dev_min = float(cfg.get("sma_25_dev_min", -6.0))
+    dev_max = float(cfg.get("sma_25_dev_max", 5.0))
+    rsi_min = float(cfg.get("rsi_14_min", 30.0))
+    rsi_max = float(cfg.get("rsi_14_max", 65.0))
+
     cond_trend = (df["close"] >= df["sma_200"]) | (df["sma_75_slope_pct"] > 0)
-    cond_pullback = (df["sma_25_dev_pct"].between(-6.0, 5.0)) & (df["rsi_14"].between(30.0, 65.0))
+    cond_pullback = (df["sma_25_dev_pct"].between(dev_min, dev_max)) & (df["rsi_14"].between(rsi_min, rsi_max))
     df["is_candidate"] = cond_trend & cond_pullback
     return df
 

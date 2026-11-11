@@ -16,6 +16,7 @@ DuckDBとPython (`stock-management` CLI) を用いて、**「① 最新データ
 
 ### Step 1: 株価データの取得・更新
 最新の日足データを取得して DuckDB (`data/stock.duckdb`) を更新します。
+監視対象の米国株銘柄リストやスクリーニング閾値は `config/us_stocks.toml` で管理されています。
 （※ `yfinance` 等で外部通信を行うため、サンドボックスでDNSエラーになる場合は `BypassSandbox: true` で実行してください）
 
 ```bash

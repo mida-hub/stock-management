@@ -3,7 +3,7 @@ from pathlib import Path
 from rich.console import Console
 from stock_management.chart import generate_stock_chart
 from stock_management.db import init_db
-from stock_management.ingest_us import fetch_and_save_us_prices
+from stock_management.ingest_us import DEFAULT_US_CONFIG_PATH, fetch_and_save_us_prices
 from stock_management.prompt_builder import generate_ai_consultation_prompt, save_prompt_to_file
 from stock_management.screener import print_screening_table, screen_core_swing_candidates
 
@@ -20,6 +20,12 @@ def main() -> None:
     # fetch-us
     fetch_us_parser = subparsers.add_parser("fetch-us", help="米国主力銘柄の日足データを取得・更新する")
     fetch_us_parser.add_argument("--period", default="2y", help="取得期間 (例: 1y, 2y, 5y, 1mo)")
+    fetch_us_parser.add_argument(
+        "--config",
+        type=str,
+        default=str(DEFAULT_US_CONFIG_PATH),
+        help="銘柄定義TOMLファイルのパス (デフォルト: config/us_stocks.toml)",
+    )
 
     # screen
     screen_parser = subparsers.add_parser("screen", help="テクニカル指標とスイング候補を表示する")
@@ -48,7 +54,7 @@ def main() -> None:
         db_path = init_db()
         console.print(f"[green]Initialized DuckDB at {db_path}[/green]")
     elif args.command == "fetch-us":
-        fetch_and_save_us_prices(period=args.period)
+        fetch_and_save_us_prices(config_path=Path(args.config), period=args.period)
     elif args.command == "screen":
         df = screen_core_swing_candidates(market=args.market)
         if args.only_candidates and not df.empty:
