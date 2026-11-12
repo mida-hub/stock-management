@@ -14,13 +14,18 @@ DuckDBとPython (`stock-management` CLI) を用いて、**「① 最新データ
 
 ## 実行ステップ（ワークフロー）
 
-### Step 1: 株価データの取得・更新
+### Step 1: 株価データの取得・差分更新
 最新の日足データを取得して DuckDB (`data/stock.duckdb`) を更新します。
-監視対象の米国株銘柄リストやスクリーニング閾値は `config/us_stocks.toml` で管理されています。
+- DuckDBに既存データがある銘柄は**自動的に最終日付からの差分のみ**を高速取得し、データがない新規銘柄のみ過去2年分（`2y`）を取得します。
+- ユーザーが特定の銘柄（例: `MSFT`）だけを指定して相談している場合は、銘柄コードを引数に渡して**その銘柄のみをピンポイントで差分更新**してください。
 （※ `yfinance` 等で外部通信を行うため、サンドボックスでDNSエラーになる場合は `BypassSandbox: true` で実行してください）
 
 ```bash
-.venv/bin/stock-management fetch-us --period 2y
+# 特定銘柄のみをピンポイントで差分更新する場合（推奨・高速）
+.venv/bin/stock-management fetch-us MSFT
+
+# 監視ユニバース全銘柄をまとめて差分更新する場合（全体スクリーニング時）
+.venv/bin/stock-management fetch-us
 ```
 
 ### Step 2: コア戦略（主力大型スイング）スクリーニングの実行

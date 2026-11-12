@@ -18,8 +18,14 @@ def main() -> None:
     subparsers.add_parser("init", help="DuckDBのスキーマとVIEWを初期化する")
 
     # fetch-us
-    fetch_us_parser = subparsers.add_parser("fetch-us", help="米国主力銘柄の日足データを取得・更新する")
-    fetch_us_parser.add_argument("--period", default="2y", help="取得期間 (例: 1y, 2y, 5y, 1mo)")
+    fetch_us_parser = subparsers.add_parser("fetch-us", help="米国主力銘柄の日足データを取得・差分更新する")
+    fetch_us_parser.add_argument(
+        "codes",
+        nargs="*",
+        help="特定の銘柄コードのみ取得する場合に指定 (例: MSFT AAPL)。省略時は config 内の全銘柄",
+    )
+    fetch_us_parser.add_argument("--period", default="2y", help="新規銘柄の初回取得期間 (デフォルト: 2y)")
+    fetch_us_parser.add_argument("--full", action="store_true", help="差分ではなく全期間(period)を再取得する")
     fetch_us_parser.add_argument(
         "--config",
         type=str,
@@ -54,7 +60,12 @@ def main() -> None:
         db_path = init_db()
         console.print(f"[green]Initialized DuckDB at {db_path}[/green]")
     elif args.command == "fetch-us":
-        fetch_and_save_us_prices(config_path=Path(args.config), period=args.period)
+        fetch_and_save_us_prices(
+            config_path=Path(args.config),
+            period=args.period,
+            target_codes=args.codes if args.codes else None,
+            full_refresh=args.full,
+        )
     elif args.command == "screen":
         df = screen_core_swing_candidates(market=args.market)
         if args.only_candidates and not df.empty:
