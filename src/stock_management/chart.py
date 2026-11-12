@@ -13,6 +13,16 @@ import mplfinance as mpf
 import pandas as pd
 from stock_management.db import get_connection
 
+# macOS環境で日本語銘柄名が文字化けしないようフォントフォールバックを設定
+plt.rcParams["font.sans-serif"] = [
+    "Hiragino Sans",
+    "Hiragino Kaku Gothic ProN",
+    "AppleGothic",
+    "Arial Unicode MS",
+    "DejaVu Sans",
+]
+plt.rcParams["axes.unicode_minus"] = False
+
 
 def generate_stock_chart(
     code: str,
@@ -109,6 +119,7 @@ def generate_stock_chart(
                 color="#ef4444",
                 linestyle="--",
                 width=0.8,
+                secondary_y=False,
             ),
             mpf.make_addplot(
                 pd.Series(50.0, index=df.index),
@@ -116,6 +127,7 @@ def generate_stock_chart(
                 color="#6b7280",
                 linestyle=":",
                 width=0.8,
+                secondary_y=False,
             ),
             mpf.make_addplot(
                 pd.Series(30.0, index=df.index),
@@ -123,6 +135,7 @@ def generate_stock_chart(
                 color="#3b82f6",
                 linestyle="--",
                 width=0.8,
+                secondary_y=False,
             ),
         ]
     )
@@ -156,6 +169,7 @@ def generate_stock_chart(
         marketcolors=mc,
         gridstyle="--",
         y_on_right=True,
+        rc={"font.family": "Hiragino Sans", "axes.unicode_minus": False},
     )
 
     fig, axes = mpf.plot(

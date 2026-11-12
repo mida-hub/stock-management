@@ -3,9 +3,14 @@ from pathlib import Path
 from rich.console import Console
 from stock_management.chart import generate_stock_chart
 from stock_management.db import init_db
+from stock_management.ingest_jp import DEFAULT_JP_CONFIG_PATH, fetch_and_save_jp_prices
 from stock_management.ingest_us import DEFAULT_US_CONFIG_PATH, fetch_and_save_us_prices
 from stock_management.prompt_builder import generate_ai_consultation_prompt, save_prompt_to_file
-from stock_management.screener import print_screening_table, screen_core_swing_candidates
+from stock_management.screener import (
+    print_screening_table,
+    print_sector_momentum_table,
+    screen_core_swing_candidates,
+)
 
 console = Console()
 
@@ -33,10 +38,36 @@ def main() -> None:
         help="銘柄定義TOMLファイルのパス (デフォルト: config/us_stocks.toml)",
     )
 
+    # fetch-jp
+    fetch_jp_parser = subparsers.add_parser("fetch-jp", help="J-Quants API(v2)から日本株主力銘柄の日足・財務データを取得・差分更新する")
+    fetch_jp_parser.add_argument(
+        "codes",
+        nargs="*",
+        help="特定の銘柄コード(4桁)のみ取得する場合に指定 (例: 8306 7203)。省略時は config/jp_stocks.toml の対象全銘柄",
+    )
+    fetch_jp_parser.add_argument("--full", action="store_true", help="差分ではなく初回遡及期間を再取得する")
+    fetch_jp_parser.add_argument("--with-fins", action="store_true", help="財務サマリー(/v2/fins/summary)も併せて取得する")
+    fetch_jp_parser.add_argument(
+        "--config",
+        type=str,
+        default=str(DEFAULT_JP_CONFIG_PATH),
+        help="日本株設定TOMLファイルのパス (デフォルト: config/jp_stocks.toml)",
+    )
+
     # screen
     screen_parser = subparsers.add_parser("screen", help="テクニカル指標とスイング候補を表示する")
     screen_parser.add_argument("--market", choices=["US", "JP"], default=None, help="市場フィルター")
     screen_parser.add_argument("--only-candidates", action="store_true", help="★候補のみに絞って表示する")
+    screen_parser.add_argument(
+        "--lot",
+        choices=["unit", "skabu"],
+        default=None,
+        help="日本株の購入区分フィルター (unit: 単元株[5000円以下]のみ, skabu: S株[5001〜25000円]のみ)",
+    )
+
+    # sectors
+    sectors_parser = subparsers.add_parser("sectors", help="業種・セクター別の騰落率と資金流入ランキングを表示する")
+    sectors_parser.add_argument("--market", choices=["JP", "US"], default="JP", help="市場 (デフォルト: JP)")
 
     # prompt
     prompt_parser = subparsers.add_parser("prompt", help="指定銘柄のAI壁打ち用プロンプト(Markdown)を生成する")
@@ -66,11 +97,24 @@ def main() -> None:
             target_codes=args.codes if args.codes else None,
             full_refresh=args.full,
         )
+    elif args.command == "fetch-jp":
+        fetch_and_save_jp_prices(
+            config_path=Path(args.config),
+            target_codes=args.codes if args.codes else None,
+            full_refresh=args.full,
+            with_fins=args.with_fins,
+        )
     elif args.command == "screen":
         df = screen_core_swing_candidates(market=args.market)
+        if args.lot == "unit" and not df.empty:
+            df = df[df["lot_type"] == "単元(100株)"]
+        elif args.lot == "skabu" and not df.empty:
+            df = df[df["lot_type"] == "S株(未満株)"]
         if args.only_candidates and not df.empty:
             df = df[df["is_candidate"]]
         print_screening_table(df, title=f"Core Swing Technical Snapshot ({args.market or 'ALL'})")
+    elif args.command == "sectors":
+        print_sector_momentum_table(market=args.market)
     elif args.command == "prompt":
         prompt_md = generate_ai_consultation_prompt(
             code=args.code,

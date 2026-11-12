@@ -16,27 +16,41 @@ DuckDBとPython (`stock-management` CLI) を用いて、**「① 最新データ
 
 ### Step 1: 株価データの取得・差分更新
 最新の日足データを取得して DuckDB (`data/stock.duckdb`) を更新します。
-- DuckDBに既存データがある銘柄は**自動的に最終日付からの差分のみ**を高速取得し、データがない新規銘柄のみ過去2年分（`2y`）を取得します。
-- ユーザーが特定の銘柄（例: `MSFT`）だけを指定して相談している場合は、銘柄コードを引数に渡して**その銘柄のみをピンポイントで差分更新**してください。
-（※ `yfinance` 等で外部通信を行うため、サンドボックスでDNSエラーになる場合は `BypassSandbox: true` で実行してください）
+- DuckDBに既存データがある銘柄は**自動的に最終日付からの差分のみ**を高速取得し、データがない新規銘柄のみ初回期間（過去2年分）を取得します。
+- ユーザーが特定の銘柄（例: 米国株 `MSFT` や日本株 `8306`）だけを指定して相談している場合は、銘柄コードを引数に渡して**その銘柄のみをピンポイントで差分更新**してください。
 
 ```bash
-# 特定銘柄のみをピンポイントで差分更新する場合（推奨・高速）
+# 【米国株】特定銘柄のみをピンポイントで差分更新する場合（推奨・高速）
 .venv/bin/stock-management fetch-us MSFT
 
-# 監視ユニバース全銘柄をまとめて差分更新する場合（全体スクリーニング時）
+# 【米国株】監視ユニバース全銘柄（config/us_stocks.toml）をまとめて差分更新する場合
 .venv/bin/stock-management fetch-us
+
+# 【日本株】特定銘柄（4桁コード）のみをJ-Quants API(v2)でピンポイント取得・差分更新する場合（財務サマリーも自動取得）
+.venv/bin/stock-management fetch-jp 8306
+
+# 【日本株】監視ユニバース全銘柄（config/jp_stocks.toml: Core30 + Large70 + extra_codes）をまとめて取得・差分更新する場合
+.venv/bin/stock-management fetch-jp
 ```
 
 ### Step 2: コア戦略（主力大型スイング）スクリーニングの実行
 DuckDBの `v_technical_indicators` ビューから、中長期トレンドが上向き（終値≧200日SMA または 75日SMA傾き＞0）かつ、25日SMA付近への押し目（乖離率 -6%〜+5%、RSI 30〜65）にある候補銘柄を抽出します。
 
 ```bash
-# 全監視銘柄のスナップショットを確認する場合
+# 全監視銘柄のスナップショットを確認する場合（--market US または --market JP）
 .venv/bin/stock-management screen --market US
+.venv/bin/stock-management screen --market JP
 
 # ★候補（スイング候補）のみに絞り込む場合
 .venv/bin/stock-management screen --market US --only-candidates
+.venv/bin/stock-management screen --market JP --only-candidates
+
+# 【日本株】購入区分でさらに絞り込む場合（--lot unit: 1単元50万円以下の単元株のみ / --lot skabu: 株価5,001〜25,000円のS株のみ）
+.venv/bin/stock-management screen --market JP --only-candidates --lot unit
+.venv/bin/stock-management screen --market JP --only-candidates --lot skabu
+
+# 【日本株】東証33業種の騰落率・資金流入ランキングを確認する場合（テーマ別S株バスケット用）
+.venv/bin/stock-management sectors --market JP
 ```
 
 ### Step 3: 個別銘柄のプロンプト情報抽出 ＆ チャート画像（PNG）生成

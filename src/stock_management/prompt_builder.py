@@ -43,6 +43,21 @@ def generate_ai_consultation_prompt(
 
     curr = latest_df.iloc[0]
     currency = "USD ($)" if curr["market"] == "US" else "JPY (円)"
+    raw_p = float(curr["raw_close"]) if pd.notna(curr.get("raw_close")) else float(curr["close"])
+
+    if curr["market"] == "JP":
+        lot_100_jpy = int(raw_p * 100)
+        if raw_p <= 5000:
+            execution_mode = f"単元株（100株単位：1単元 約 {lot_100_jpy:,} 円 / 指値・逆指値・PTS利用可）"
+        elif raw_p <= 25000:
+            est_shares = max(1, int(min(budget_jpy, 300_000) // raw_p))
+            execution_mode = (
+                f"S株（単元未満株：1単元 {lot_100_jpy:,} 円で50万円超のため、1株 {raw_p:,.0f} 円 × {est_shares}株前後で分割売買）"
+            )
+        else:
+            execution_mode = f"除外対象（超値嵩株：1株 {raw_p:,.0f} 円 > 上限 25,000 円）"
+    else:
+        execution_mode = "米国株（1株単位：指値・逆指値利用可）"
 
     # 直近5営業日の推移テーブル作成
     recent_5 = latest_df.head(5).iloc[::-1]
@@ -78,6 +93,7 @@ def generate_ai_consultation_prompt(
 * **投資スタイル**: コア戦略（主力大型株の中期スイング：数週間〜数ヶ月保有）
 * **狙う局面**: 中長期（75日・200日線）の上昇トレンド中における、25日移動平均線付近への押し目・反発局面
 * **想定投入資金**: 約 {budget_jpy:,} 円（1ポジションあたり）
+* **売買単位・執行方式**: **{execution_mode}**
 * **許容最大リスク**: 買値から **-{max_risk_pct:.1f}%**（最大許容損失額: 約 {max_loss_jpy:,} 円）
 * **目標リスクリワード比**: **1 : 2 以上**（損切り幅に対して2倍以上の利幅が狙えること）
 

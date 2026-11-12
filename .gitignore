@@ -15,8 +15,11 @@ reports/
 *.duckdb
 *.duckdb.wal
 
-# Environment variables
+# Environment variables & API secrets
 .env
+.env.*
+!.env.example
+config/secrets.toml
 
 # Personal trade CSVs (avoid accidental commit)
 *.csv
