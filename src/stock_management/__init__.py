@@ -69,6 +69,14 @@ def main() -> None:
     sectors_parser = subparsers.add_parser("sectors", help="業種・セクター別の騰落率と資金流入ランキングを表示する")
     sectors_parser.add_argument("--market", choices=["JP", "US"], default="JP", help="市場 (デフォルト: JP)")
 
+    # basket
+    basket_parser = subparsers.add_parser("basket", help="テーマ別S株バスケット（株数配分＋落選理由）を提案する")
+    basket_parser.add_argument("theme", help="テーマ名または東証33業種名 (例: 銀行, 半導体, 防衛, 自動運転)")
+    basket_parser.add_argument("--budget", type=float, default=250000.0, help="バスケット予算(円) デフォルト: 250,000")
+    basket_parser.add_argument("--stocks", type=int, default=5, help="最大採用銘柄数 デフォルト: 5")
+    basket_parser.add_argument("--min-stocks", type=int, default=3, help="バスケット成立の最低銘柄数 デフォルト: 3")
+    basket_parser.add_argument("--relaxed", action="store_true", help="条件を少し緩める (25MA乖離上限+8%%, RSI上限70)")
+
     # prompt
     prompt_parser = subparsers.add_parser("prompt", help="指定銘柄のAI壁打ち用プロンプト(Markdown)を生成する")
     prompt_parser.add_argument("code", help="銘柄コード (例: MSFT, AAPL, 8306)")
@@ -115,6 +123,16 @@ def main() -> None:
         print_screening_table(df, title=f"Core Swing Technical Snapshot ({args.market or 'ALL'})")
     elif args.command == "sectors":
         print_sector_momentum_table(market=args.market)
+    elif args.command == "basket":
+        from stock_management.screener import print_theme_basket
+
+        print_theme_basket(
+            theme=args.theme,
+            budget=args.budget,
+            max_stocks=args.stocks,
+            min_stocks=args.min_stocks,
+            relaxed=args.relaxed,
+        )
     elif args.command == "prompt":
         prompt_md = generate_ai_consultation_prompt(
             code=args.code,
