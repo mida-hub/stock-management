@@ -192,17 +192,63 @@ def fetch_and_save_us_prices(
 
     if not all_rows:
         console.print("[yellow]No new price rows fetched (already up to date).[/yellow]")
-        return 0
+    else:
+        with get_connection() as con:
+            con.executemany(
+                """
+                INSERT OR REPLACE INTO daily_prices (
+                    code, date, open, high, low, close, raw_close, volume, turnover_value
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                all_rows,
+            )
+        console.print(f"[green]Upserted {len(all_rows):,} daily price row(s) into DuckDB.[/green]")
 
-    with get_connection() as con:
-        con.executemany(
-            """
-            INSERT OR REPLACE INTO daily_prices (
-                code, date, open, high, low, close, raw_close, volume, turnover_value
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            all_rows,
-        )
-
-    console.print(f"[green]Upserted {len(all_rows):,} daily price row(s) into DuckDB.[/green]")
+    fetch_and_save_us_fundamentals(tickers)
     return len(all_rows)
+
+
+def fetch_and_save_us_fundamentals(tickers: list[str]) -> int:
+    """yfinance から米国株のファンダメンタルズ（PER・配当利回り・増益率・次回決算日）を取得して保存する。"""
+    if not tickers:
+        return 0
+    console.print(f"[cyan]Fetching US fundamentals for {len(tickers)} ticker(s)...[/cyan]")
+    today_str = date.today().isoformat()
+    rows: list[tuple] = []
+
+    for code in tickers:
+        try:
+            t = yf.Ticker(code)
+            info = t.info or {}
+            fwd_pe = info.get("forwardPE")
+            trl_pe = info.get("trailingPE")
+            div_yield = info.get("dividendYield")
+            div_pct = round(float(div_yield) * 100.0, 2) if div_yield is not None else None
+            # yfinance dividendYield is sometimes already in % (e.g. 0.72 vs 0.0072); if > 20, assume already %
+            if div_pct is not None and div_pct > 20.0:
+                div_pct = round(float(div_yield), 2)
+            eg = info.get("earningsGrowth")
+            eg_pct = round(float(eg) * 100.0, 1) if eg is not None else None
+
+            next_ed = None
+            cal = t.calendar
+            if isinstance(cal, dict) and "Earnings Date" in cal and cal["Earnings Date"]:
+                ed_val = cal["Earnings Date"][0]
+                next_ed = pd.to_datetime(ed_val).strftime("%Y-%m-%d")
+
+            rows.append((code, today_str, fwd_pe, trl_pe, div_pct, eg_pct, next_ed))
+        except Exception as e:
+            console.print(f"[yellow]Warning: failed to fetch fundamentals for {code}: {e}[/yellow]")
+
+    if rows:
+        with get_connection() as con:
+            con.executemany(
+                """
+                INSERT OR REPLACE INTO us_fundamentals (
+                    code, updated_at, forward_pe, trailing_pe, dividend_yield_pct, earnings_growth_pct, next_earnings_date
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                rows,
+            )
+        console.print(f"[green]Upserted {len(rows)} US fundamental row(s) into DuckDB.[/green]")
+    return len(rows)

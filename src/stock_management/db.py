@@ -49,6 +49,17 @@ CREATE TABLE IF NOT EXISTS financial_summaries (
     PRIMARY KEY (code, disclosed_date, fiscal_quarter)
 );
 
+-- 3.5 米国株ファンダメンタルズ
+CREATE TABLE IF NOT EXISTS us_fundamentals (
+    code VARCHAR PRIMARY KEY,
+    updated_at DATE NOT NULL,
+    forward_pe DOUBLE,
+    trailing_pe DOUBLE,
+    dividend_yield_pct DOUBLE,
+    earnings_growth_pct DOUBLE,
+    next_earnings_date DATE
+);
+
 -- 4. 指数・先物データ
 CREATE TABLE IF NOT EXISTS indices_and_futures (
     symbol VARCHAR NOT NULL,
