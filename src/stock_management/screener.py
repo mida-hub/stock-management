@@ -147,6 +147,46 @@ def _attach_jp_fundamentals(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _attach_us_fundamentals(df: pd.DataFrame) -> pd.DataFrame:
+    """米国株のファンダメンタルズ（us_fundamentals）から PER・配当利回り・増益率・次回決算日を付与する。"""
+    if "US" not in df["market"].values:
+        return df
+
+    with get_connection() as con:
+        us_df = con.execute("SELECT * FROM us_fundamentals").df()
+
+    if us_df.empty:
+        return df
+
+    us_map = us_df.set_index("code").to_dict(orient="index")
+    for idx, row in df.iterrows():
+        if row["market"] != "US":
+            continue
+        f = us_map.get(row["code"])
+        if not f:
+            continue
+
+        pe = f.get("forward_pe") if pd.notna(f.get("forward_pe")) else f.get("trailing_pe")
+        if pd.notna(pe) and float(pe) > 0:
+            df.at[idx, "per"] = round(float(pe), 1)
+
+        if pd.notna(f.get("dividend_yield_pct")):
+            df.at[idx, "div_yield_pct"] = round(float(f["dividend_yield_pct"]), 2)
+
+        if pd.notna(f.get("earnings_growth_pct")):
+            df.at[idx, "op_growth_pct"] = round(float(f["earnings_growth_pct"]), 1)
+
+        next_ed = pd.to_datetime(f.get("next_earnings_date"), errors="coerce")
+        price_dt = pd.to_datetime(row["date"], errors="coerce")
+        if pd.notna(next_ed):
+            df.at[idx, "next_earnings_est"] = next_ed.strftime("%Y-%m-%d")
+            if pd.notna(price_dt):
+                days_left = (next_ed - price_dt).days
+                df.at[idx, "earnings_warn"] = 0 <= days_left <= 10
+
+    return df
+
+
 def screen_core_swing_candidates(market: str | None = None) -> pd.DataFrame:
     """
     コア戦略（大型主力スイング）向けのスクリーニング:
@@ -186,6 +226,7 @@ def screen_core_swing_candidates(market: str | None = None) -> pd.DataFrame:
 
     df["is_candidate"] = cond_trend & cond_pullback & cond_affordable
     df = _attach_jp_fundamentals(df)
+    df = _attach_us_fundamentals(df)
     return df
 
 
