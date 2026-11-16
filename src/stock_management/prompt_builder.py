@@ -37,6 +37,45 @@ def _build_volume_profile_md(code: str, days: int = 120, bins_count: int = 8) ->
     return "\n".join(lines)
 
 
+def _calc_atr14(code: str) -> tuple[float | None, float | None]:
+    """直近の株価データから ATR(14) と ATR% を算出する。"""
+    with get_connection() as con:
+        df = con.execute(
+            """
+            SELECT high, low, close
+            FROM daily_prices
+            WHERE code = ? AND high IS NOT NULL AND low IS NOT NULL AND close IS NOT NULL
+            ORDER BY date DESC
+            LIMIT 20
+            """,
+            [code],
+        ).df()
+    if len(df) < 15:
+        return None, None
+    df = df.iloc[::-1].reset_index(drop=True)
+    prev_close = df["close"].shift(1)
+    tr = pd.concat(
+        [
+            df["high"] - df["low"],
+            (df["high"] - prev_close).abs(),
+            (df["low"] - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    atr14 = float(tr.tail(14).mean())
+    last_close = float(df["close"].iloc[-1])
+    atr_pct = (atr14 / last_close * 100.0) if last_close > 0 else None
+    return round(atr14, 2), (round(atr_pct, 2) if atr_pct is not None else None)
+
+
+def _build_atr_line(code: str, close_price: float) -> str:
+    atr14, atr_pct = _calc_atr14(code)
+    if atr14 is None or atr_pct is None:
+        return ""
+    stop_2atr = round(close_price - 2.0 * atr14, 2)
+    return f"  * **ATR(14)**: `{atr14:.2f}` ({atr_pct:.2f}%) / **2×ATR損切り目安**: `{stop_2atr:.2f}` (-{2 * atr_pct:.2f}%)"
+
+
 def generate_ai_consultation_prompt(
     code: str,
     budget_jpy: int = 500_000,
@@ -146,6 +185,7 @@ def generate_ai_consultation_prompt(
   * **直近20日間の最安値 (サポート目安)**: `{curr['recent_low_20d']:.2f}`
   * **直近60日高値からの下落率**: `{curr['drawdown_60d_pct']:+.2f}%`
   * **直近250日高値からの下落率**: `{curr['drawdown_250d_pct']:+.2f}%`
+{_build_atr_line(code, float(curr['close']))}
 
 ### 直近5営業日の四本値・RSI推移
 | 日付 | 始値 | 高値 | 安値 | 終値 | 出来高 | RSI(14) |

@@ -254,6 +254,9 @@ def print_screening_table(df: pd.DataFrame, title: str = "Technical Screening Sn
             "75d_Slope%": df["sma_75_slope_pct"].map(lambda x: f"{x:+.2f}%"),
             "200d_SMA": df["sma_200"].map(lambda x: f"{x:.2f}" if pd.notna(x) else "-"),
             "RSI(14)": df["rsi_14"].map(lambda x: f"{x:.1f}" if pd.notna(x) else "-"),
+            "出来高倍": df["vol_ratio_25d"].map(
+                lambda x: (f"🔥{x:.2f}x" if x >= 1.5 else f"{x:.2f}x") if pd.notna(x) else "-"
+            ),
             "60d_DD%": df["drawdown_60d_pct"].map(lambda x: f"{x:+.2f}%"),
             "20d_Low": df["recent_low_20d"].map(lambda x: f"{x:.2f}"),
             "PER": df["per"].map(lambda x: f"{x:.1f}x" if pd.notna(x) else "-"),
