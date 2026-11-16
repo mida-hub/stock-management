@@ -180,12 +180,16 @@ def _attach_us_fundamentals(df: pd.DataFrame) -> pd.DataFrame:
             df.at[idx, "op_growth_pct"] = round(float(f["earnings_growth_pct"]), 1)
 
         next_ed = pd.to_datetime(f.get("next_earnings_date"), errors="coerce")
+        last_ed = pd.to_datetime(f.get("last_earnings_date"), errors="coerce")
         price_dt = pd.to_datetime(row["date"], errors="coerce")
         if pd.notna(next_ed):
             df.at[idx, "next_earnings_est"] = next_ed.strftime("%Y-%m-%d")
             if pd.notna(price_dt):
                 days_left = (next_ed - price_dt).days
                 df.at[idx, "earnings_warn"] = 0 <= days_left <= 10
+        if pd.notna(last_ed) and pd.notna(price_dt):
+            days_since = (price_dt - last_ed).days
+            df.at[idx, "recent_earnings"] = 0 <= days_since <= 7
 
     return df
 
@@ -349,7 +353,7 @@ def print_theme_basket(
     jp_cfg = load_jp_config(DEFAULT_JP_CONFIG_PATH) if DEFAULT_JP_CONFIG_PATH.exists() else {}
     themes = jp_cfg.get("themes", {})
     screening_cfg = dict(jp_cfg.get("screening", {}))
-    if relaxed:
+    if relaxed and theme != "上昇トレンド":
         screening_cfg["sma_25_dev_max"] = max(float(screening_cfg.get("sma_25_dev_max", 5.0)), 8.0)
         screening_cfg["rsi_14_max"] = max(float(screening_cfg.get("rsi_14_max", 65.0)), 70.0)
 
@@ -387,7 +391,7 @@ def print_theme_basket(
             console.print(f"定義済みカスタムテーマ: {avail}")
         return
 
-    if relaxed:
+    if relaxed and theme != "上昇トレンド":
         dev_min = float(screening_cfg.get("sma_25_dev_min", -6.0))
         dev_max = float(screening_cfg["sma_25_dev_max"])
         rsi_min = float(screening_cfg.get("rsi_14_min", 30.0))
@@ -413,7 +417,7 @@ def print_theme_basket(
         )
     else:
         per_budget = budget / len(passed)
-        passed["shares"] = passed["raw_close"].map(lambda p: max(1, int(per_budget // p)) if p <= budget else 0)
+        passed["shares"] = passed["raw_close"].map(lambda p: int(per_budget // p) if p > 0 else 0)
         passed["est_amount"] = passed["shares"] * passed["raw_close"]
         total_amount = passed["est_amount"].sum()
 
@@ -428,6 +432,16 @@ def print_theme_basket(
                 "RSI(14)": passed["rsi_14"].map(lambda x: f"{x:.1f}"),
                 "PER": passed["per"].map(lambda x: f"{x:.1f}x" if pd.notna(x) else "-"),
                 "配当%": passed["div_yield_pct"].map(lambda x: f"{x:.2f}%" if pd.notna(x) else "-"),
+                "次回決算": passed.apply(
+                    lambda r: (
+                        f"⚠️{r['next_earnings_est']}"
+                        if r["earnings_warn"]
+                        else (f"🔥直後({r['next_earnings_est']})" if r["recent_earnings"] else str(r["next_earnings_est"]))
+                    )
+                    if pd.notna(r["next_earnings_est"])
+                    else "-",
+                    axis=1,
+                ),
             }
         )
         console.print("[bold green]▼ 採用銘柄（S株バスケット配分）[/bold green]")
