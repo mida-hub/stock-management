@@ -60,6 +60,7 @@ def _attach_jp_fundamentals(df: pd.DataFrame) -> pd.DataFrame:
     for col in ("per", "div_yield_pct", "op_growth_pct", "next_earnings_est"):
         df[col] = pd.NA
     df["earnings_warn"] = False
+    df["recent_earnings"] = False
     df["is_turnaround"] = False
 
     if "JP" not in df["market"].values:
@@ -143,6 +144,8 @@ def _attach_jp_fundamentals(df: pd.DataFrame) -> pd.DataFrame:
             if pd.notna(price_dt):
                 days_left = (next_est - price_dt).days
                 df.at[idx, "earnings_warn"] = 0 <= days_left <= 10
+                days_since = (price_dt - disc).days
+                df.at[idx, "recent_earnings"] = 0 <= days_since <= 7
 
     return df
 
@@ -253,7 +256,11 @@ def print_screening_table(df: pd.DataFrame, title: str = "Technical Screening Sn
             "配当%": df["div_yield_pct"].map(lambda x: f"{x:.2f}%" if pd.notna(x) else "-"),
             "営利増益%": df["op_growth_pct"].map(lambda x: f"{x:+.1f}%" if pd.notna(x) else "-"),
             "次回決算": df.apply(
-                lambda r: (f"⚠️{r['next_earnings_est']}" if r["earnings_warn"] else str(r["next_earnings_est"]))
+                lambda r: (
+                    f"⚠️{r['next_earnings_est']}"
+                    if r["earnings_warn"]
+                    else (f"🔥直後({r['next_earnings_est']})" if r["recent_earnings"] else str(r["next_earnings_est"]))
+                )
                 if pd.notna(r["next_earnings_est"])
                 else "-",
                 axis=1,

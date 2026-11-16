@@ -4,6 +4,39 @@ import pandas as pd
 from stock_management.db import get_connection
 
 
+def _build_volume_profile_md(code: str, days: int = 120, bins_count: int = 8) -> str:
+    """直近N営業日の価格帯別出来高（ボリュームゾーン）をMarkdown表で返す。"""
+    with get_connection() as con:
+        vp_df = con.execute(
+            """
+            SELECT close, volume
+            FROM daily_prices
+            WHERE code = ? AND close IS NOT NULL AND volume IS NOT NULL
+            ORDER BY date DESC
+            LIMIT ?
+            """,
+            [code, days],
+        ).df()
+    if vp_df.empty or vp_df["volume"].sum() <= 0:
+        return "- データなし"
+
+    p_min = float(vp_df["close"].min())
+    p_max = float(vp_df["close"].max())
+    if p_max <= p_min:
+        return "- データ不足"
+
+    vp_df["bucket"] = pd.cut(vp_df["close"], bins=bins_count, include_lowest=True)
+    grouped = vp_df.groupby("bucket", observed=False)["volume"].sum().sort_index(ascending=False)
+    total_vol = grouped.sum()
+
+    lines = ["| 価格帯 | 出来高 | 構成比 | ボリューム |", "| :--- | ---: | ---: | :--- |"]
+    for interval, vol in grouped.items():
+        pct = (float(vol) / float(total_vol)) * 100.0 if total_vol > 0 else 0.0
+        bar = "█" * max(1, int(pct / 2)) if vol > 0 else ""
+        lines.append(f"| {interval.left:,.0f} 〜 {interval.right:,.0f} | {vol:,.0f} | {pct:.1f}% | {bar} |")
+    return "\n".join(lines)
+
+
 def generate_ai_consultation_prompt(
     code: str,
     budget_jpy: int = 500_000,
@@ -118,6 +151,9 @@ def generate_ai_consultation_prompt(
 | 日付 | 始値 | 高値 | 安値 | 終値 | 出来高 | RSI(14) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 {recent_table_md}
+
+### 価格帯別出来高（直近120営業日・ボリュームゾーン）
+{_build_volume_profile_md(code)}
 
 ### 財務・決算データ
 {fin_section}
