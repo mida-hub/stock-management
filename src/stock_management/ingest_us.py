@@ -222,11 +222,15 @@ def fetch_and_save_us_fundamentals(tickers: list[str]) -> int:
             info = t.info or {}
             fwd_pe = info.get("forwardPE")
             trl_pe = info.get("trailingPE")
-            div_yield = info.get("dividendYield")
-            div_pct = round(float(div_yield) * 100.0, 2) if div_yield is not None else None
-            # yfinance dividendYield is sometimes already in % (e.g. 0.72 vs 0.0072); if > 20, assume already %
-            if div_pct is not None and div_pct > 20.0:
-                div_pct = round(float(div_yield), 2)
+            div_rate = info.get("dividendRate")
+            cur_price = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("previousClose")
+            trl_div_yield = info.get("trailingAnnualDividendYield")
+            if div_rate is not None and cur_price is not None and float(cur_price) > 0:
+                div_pct = round((float(div_rate) / float(cur_price)) * 100.0, 2)
+            elif trl_div_yield is not None:
+                div_pct = round(float(trl_div_yield) * 100.0, 2)
+            else:
+                div_pct = None
             eg = info.get("earningsGrowth")
             eg_pct = round(float(eg) * 100.0, 1) if eg is not None else None
 
@@ -236,7 +240,17 @@ def fetch_and_save_us_fundamentals(tickers: list[str]) -> int:
                 ed_val = cal["Earnings Date"][0]
                 next_ed = pd.to_datetime(ed_val).strftime("%Y-%m-%d")
 
-            rows.append((code, today_str, fwd_pe, trl_pe, div_pct, eg_pct, next_ed))
+            last_ed = None
+            try:
+                ed_df = t.earnings_dates
+                if ed_df is not None and not ed_df.empty:
+                    past_dates = [d for d in pd.to_datetime(ed_df.index).tz_localize(None) if d.date() <= date.today()]
+                    if past_dates:
+                        last_ed = max(past_dates).strftime("%Y-%m-%d")
+            except Exception:
+                pass
+
+            rows.append((code, today_str, fwd_pe, trl_pe, div_pct, eg_pct, next_ed, last_ed))
         except Exception as e:
             console.print(f"[yellow]Warning: failed to fetch fundamentals for {code}: {e}[/yellow]")
 
@@ -245,8 +259,8 @@ def fetch_and_save_us_fundamentals(tickers: list[str]) -> int:
             con.executemany(
                 """
                 INSERT OR REPLACE INTO us_fundamentals (
-                    code, updated_at, forward_pe, trailing_pe, dividend_yield_pct, earnings_growth_pct, next_earnings_date
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    code, updated_at, forward_pe, trailing_pe, dividend_yield_pct, earnings_growth_pct, next_earnings_date, last_earnings_date
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 rows,
             )

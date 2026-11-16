@@ -57,8 +57,10 @@ CREATE TABLE IF NOT EXISTS us_fundamentals (
     trailing_pe DOUBLE,
     dividend_yield_pct DOUBLE,
     earnings_growth_pct DOUBLE,
-    next_earnings_date DATE
+    next_earnings_date DATE,
+    last_earnings_date DATE
 );
+ALTER TABLE us_fundamentals ADD COLUMN IF NOT EXISTS last_earnings_date DATE;
 
 -- 4. 指数・先物データ
 CREATE TABLE IF NOT EXISTS indices_and_futures (
