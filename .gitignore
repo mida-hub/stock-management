@@ -23,3 +23,6 @@ config/secrets.toml
 
 # Personal trade CSVs (avoid accidental commit)
 *.csv
+
+# Personal watchlist & positions
+.agents/rules/watchlist.md
