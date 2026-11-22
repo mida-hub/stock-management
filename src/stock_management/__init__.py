@@ -101,6 +101,8 @@ def main() -> None:
     chart_parser.add_argument("--entry", type=float, default=None, help="エントリー目安ラインの価格")
     chart_parser.add_argument("--stop", type=float, default=None, help="損切りラインの価格")
     chart_parser.add_argument("--target", type=float, default=None, help="利確ターゲットラインの価格")
+    chart_parser.add_argument("--entry-date", type=str, default=None, help="エントリー日 (YYYY-MM-DD / 青縦線)")
+    chart_parser.add_argument("--exit-date", type=str, default=None, help="イグジット日 (YYYY-MM-DD / 紫縦線)")
 
     args = parser.parse_args()
 
@@ -172,6 +174,8 @@ def main() -> None:
             entry_price=args.entry,
             stop_price=args.stop,
             target_price=args.target,
+            entry_date=args.entry_date,
+            exit_date=args.exit_date,
         )
         console.print(f"[bold green]Generated chart at: {chart_path}[/bold green]")
     else:
