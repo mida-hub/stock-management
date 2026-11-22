@@ -27,7 +27,7 @@ MODEL_CONFIGS = {
 }
 
 
-def _check_signal(row: pd.Series, model: str) -> bool:
+def _check_signal(row: pd.Series, model: str, strict_trend: bool = False) -> bool:
     close = row["close"]
     open_p = row["open"]
     sma_200 = row["sma_200"]
@@ -41,7 +41,10 @@ def _check_signal(row: pd.Series, model: str) -> bool:
         return False
 
     is_bullish_candle = close > open_p
-    trend_up = (pd.notna(sma_200) and close >= sma_200) or (pd.notna(slope_75) and slope_75 > 0)
+    if strict_trend:
+        trend_up = (pd.notna(sma_200) and close >= sma_200) and (pd.notna(slope_75) and slope_75 > 0)
+    else:
+        trend_up = (pd.notna(sma_200) and close >= sma_200) or (pd.notna(slope_75) and slope_75 > 0)
 
     if model == "A":
         return bool(trend_up and (-5.0 <= dev_25 <= 2.0) and (35.0 <= rsi <= 55.0) and is_bullish_candle)
@@ -69,6 +72,8 @@ def simulate_trades_on_df(
     model: str,
     stop_mode: str = "fixed",
     cost_pct: float = 0.2,
+    strict_trend: bool = False,
+    allowed_dates: set | None = None,
 ) -> list[dict]:
     """1銘柄分の時系列DataFrameに対して指定モデルのバックテストを実行する（翌日始値エントリー）。"""
     cfg = MODEL_CONFIGS[model]
@@ -81,7 +86,10 @@ def simulate_trades_on_df(
     i = 0
     while i < n - 1:
         row = df.iloc[i]
-        if not _check_signal(row, model):
+        if allowed_dates is not None and row["date"] not in allowed_dates:
+            i += 1
+            continue
+        if not _check_signal(row, model, strict_trend=strict_trend):
             i += 1
             continue
 
@@ -139,6 +147,8 @@ def run_backtest(
     market: str = "JP",
     days: int = 365,
     stop_mode: str = "fixed",
+    strict_trend: bool = False,
+    regime_min_pct: float = 0.0,
 ) -> pd.DataFrame:
     """指定市場・期間の過去データでモデルA/B/Cのバックテストを実行し、サマリーを返す。"""
     query = f"""
@@ -178,13 +188,26 @@ def run_backtest(
     df["atr_14"] = tr.groupby(df["code"]).transform(lambda s: s.rolling(14).mean())
     df["atr_pct"] = (df["atr_14"] / df["close"]) * 100.0
 
+    allowed_dates: set | None = None
+    if regime_min_pct > 0.0:
+        daily_breadth = df.groupby("date")["sma_25_dev_pct"].apply(lambda s: (s >= 0).mean() * 100.0)
+        allowed_dates = set(daily_breadth[daily_breadth >= regime_min_pct].index)
+
     models_to_run = ["A", "B", "C"] if model == "all" else [model.upper()]
     summary_rows = []
 
     for m in models_to_run:
         all_trades: list[dict] = []
         for _, grp in df.groupby("code", sort=False):
-            all_trades.extend(simulate_trades_on_df(grp.reset_index(drop=True), m, stop_mode=stop_mode))
+            all_trades.extend(
+                simulate_trades_on_df(
+                    grp.reset_index(drop=True),
+                    m,
+                    stop_mode=stop_mode,
+                    strict_trend=strict_trend,
+                    allowed_dates=allowed_dates,
+                )
+            )
 
         if not all_trades:
             summary_rows.append(
@@ -231,8 +254,17 @@ def print_backtest_summary(
     market: str = "JP",
     days: int = 365,
     stop_mode: str = "fixed",
+    strict_trend: bool = False,
+    regime_min_pct: float = 0.0,
 ) -> None:
-    res = run_backtest(model=model, market=market, days=days, stop_mode=stop_mode)
+    res = run_backtest(
+        model=model,
+        market=market,
+        days=days,
+        stop_mode=stop_mode,
+        strict_trend=strict_trend,
+        regime_min_pct=regime_min_pct,
+    )
     if res.empty:
         console.print(f"[yellow]No backtest data found for market={market}.[/yellow]")
         return

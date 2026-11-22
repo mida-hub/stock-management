@@ -83,6 +83,8 @@ def main() -> None:
     bt_parser.add_argument("--market", choices=["JP", "US"], default="JP", help="市場 (デフォルト: JP)")
     bt_parser.add_argument("--days", type=int, default=365, help="検証期間(日) デフォルト: 365")
     bt_parser.add_argument("--stop-mode", choices=["fixed", "atr"], default="fixed", help="損切り/利確方式 (fixed または atr)")
+    bt_parser.add_argument("--strict-trend", action="store_true", help="トレンド条件を厳格化 (200SMA上 AND 75SMA上向き)")
+    bt_parser.add_argument("--regime-min-pct", type=float, default=0.0, help="地合いフィルター: 25MA上回り銘柄比率の下限(%%)")
 
     # prompt
     prompt_parser = subparsers.add_parser("prompt", help="指定銘柄のAI壁打ち用プロンプト(Markdown)を生成する")
@@ -143,7 +145,14 @@ def main() -> None:
     elif args.command == "backtest":
         from stock_management.backtester import print_backtest_summary
 
-        print_backtest_summary(model=args.model, market=args.market, days=args.days, stop_mode=args.stop_mode)
+        print_backtest_summary(
+            model=args.model,
+            market=args.market,
+            days=args.days,
+            stop_mode=args.stop_mode,
+            strict_trend=args.strict_trend,
+            regime_min_pct=args.regime_min_pct,
+        )
     elif args.command == "prompt":
         prompt_md = generate_ai_consultation_prompt(
             code=args.code,
