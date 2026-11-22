@@ -77,6 +77,13 @@ def main() -> None:
     basket_parser.add_argument("--min-stocks", type=int, default=3, help="バスケット成立の最低銘柄数 デフォルト: 3")
     basket_parser.add_argument("--relaxed", action="store_true", help="条件を少し緩める (25MA乖離上限+8%%, RSI上限70)")
 
+    # backtest
+    bt_parser = subparsers.add_parser("backtest", help="モデルA/B/Cの過去データバックテストを実行する")
+    bt_parser.add_argument("--model", choices=["A", "B", "C", "all"], default="all", help="モデル (デフォルト: all)")
+    bt_parser.add_argument("--market", choices=["JP", "US"], default="JP", help="市場 (デフォルト: JP)")
+    bt_parser.add_argument("--days", type=int, default=365, help="検証期間(日) デフォルト: 365")
+    bt_parser.add_argument("--stop-mode", choices=["fixed", "atr"], default="fixed", help="損切り/利確方式 (fixed または atr)")
+
     # prompt
     prompt_parser = subparsers.add_parser("prompt", help="指定銘柄のAI壁打ち用プロンプト(Markdown)を生成する")
     prompt_parser.add_argument("code", help="銘柄コード (例: MSFT, AAPL, 8306)")
@@ -133,6 +140,10 @@ def main() -> None:
             min_stocks=args.min_stocks,
             relaxed=args.relaxed,
         )
+    elif args.command == "backtest":
+        from stock_management.backtester import print_backtest_summary
+
+        print_backtest_summary(model=args.model, market=args.market, days=args.days, stop_mode=args.stop_mode)
     elif args.command == "prompt":
         prompt_md = generate_ai_consultation_prompt(
             code=args.code,
