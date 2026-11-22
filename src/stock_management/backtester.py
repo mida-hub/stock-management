@@ -27,7 +27,7 @@ MODEL_CONFIGS = {
 }
 
 
-def _check_signal(row: pd.Series, model: str, strict_trend: bool = False, refined_c: bool = False) -> bool:
+def _check_signal(row: pd.Series, model: str, strict_trend: bool = False) -> bool:
     close = row["close"]
     open_p = row["open"]
     sma_200 = row["sma_200"]
@@ -57,11 +57,10 @@ def _check_signal(row: pd.Series, model: str, strict_trend: bool = False, refine
             and is_bullish_candle
         )
     if model == "C":
-        dev_low = 0.0 if refined_c else -4.0
         return bool(
             pd.notna(sma_200)
             and close >= sma_200
-            and (dev_low <= dev_25 <= 3.0)
+            and (-4.0 <= dev_25 <= 3.0)
             and (35.0 <= rsi <= 55.0)
             and (pd.notna(atr_pct) and atr_pct <= 3.0)
         )
@@ -75,7 +74,6 @@ def simulate_trades_on_df(
     cost_pct: float = 0.2,
     strict_trend: bool = False,
     allowed_dates: set | None = None,
-    refined_c: bool = False,
 ) -> list[dict]:
     """1銘柄分の時系列DataFrameに対して指定モデルのバックテストを実行する（翌日始値エントリー）。"""
     cfg = MODEL_CONFIGS[model]
@@ -91,7 +89,7 @@ def simulate_trades_on_df(
         if allowed_dates is not None and row["date"] not in allowed_dates:
             i += 1
             continue
-        if not _check_signal(row, model, strict_trend=strict_trend, refined_c=refined_c):
+        if not _check_signal(row, model, strict_trend=strict_trend):
             i += 1
             continue
 
@@ -125,17 +123,6 @@ def simulate_trades_on_df(
                 exit_price = max(float(bar["open"]), target_price)
                 exit_reason = "TARGET"
                 break
-            if (
-                refined_c
-                and model == "C"
-                and pd.notna(bar.get("sma_25"))
-                and pd.notna(bar.get("sma_75"))
-                and float(bar["sma_25"]) < float(bar["sma_75"])
-            ):
-                exit_idx = j
-                exit_price = float(bar["close"])
-                exit_reason = "DC"
-                break
 
         ret_pct = ((exit_price - entry_price) / entry_price * 100.0) - cost_pct
         trades.append(
@@ -162,7 +149,6 @@ def run_backtest(
     stop_mode: str = "fixed",
     strict_trend: bool = False,
     regime_min_pct: float = 0.0,
-    refined_c: bool = False,
 ) -> pd.DataFrame:
     """指定市場・期間の過去データでモデルA/B/Cのバックテストを実行し、サマリーを返す。"""
     query = f"""
@@ -173,8 +159,6 @@ def run_backtest(
         high,
         low,
         close,
-        sma_25,
-        sma_75,
         sma_25_dev_pct,
         sma_75_slope_pct,
         sma_200,
@@ -222,7 +206,6 @@ def run_backtest(
                     stop_mode=stop_mode,
                     strict_trend=strict_trend,
                     allowed_dates=allowed_dates,
-                    refined_c=refined_c,
                 )
             )
 
