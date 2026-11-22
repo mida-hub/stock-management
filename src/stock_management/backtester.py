@@ -272,3 +272,54 @@ def print_backtest_summary(
         f"\n[bold cyan]=== Backtest Summary ({market} / Past {days} days / stop={stop_mode} / cost=0.2%) ===[/bold cyan]"
     )
     print(res.to_string(index=False))
+
+
+def _parse_pf(val: str) -> float:
+    if val in ("-", "inf"):
+        return 0.0 if val == "-" else 99.0
+    try:
+        return float(val)
+    except ValueError:
+        return 0.0
+
+
+def print_health_check(market: str = "JP") -> None:
+    """365日・直近90日・直近90日(地合いフィルター50%+)を比較し、モデルの健全性を判定する。"""
+    df_365 = run_backtest(model="all", market=market, days=365)
+    df_90 = run_backtest(model="all", market=market, days=90)
+    df_90_reg = run_backtest(model="all", market=market, days=90, regime_min_pct=50.0)
+
+    if df_365.empty:
+        console.print(f"[yellow]No backtest data found for market={market}.[/yellow]")
+        return
+
+    rows = []
+    for i in range(len(df_365)):
+        m_name = df_365.iloc[i]["Model"]
+        pf_365 = df_365.iloc[i]["PF"]
+        pf_90 = df_90.iloc[i]["PF"]
+        pf_90_reg = df_90_reg.iloc[i]["PF"]
+        t_90 = df_90.iloc[i]["Trades"]
+
+        v90 = _parse_pf(pf_90)
+        v90r = _parse_pf(pf_90_reg)
+        if v90 >= 1.0:
+            status = "🟢 健全"
+        elif v90r >= 1.0:
+            status = "🟡 地合い悪化(様子見)"
+        else:
+            status = "🔴 モデル劣化(要見直し)"
+
+        rows.append(
+            {
+                "Model": m_name,
+                "365d_PF": pf_365,
+                "90d_Trades": t_90,
+                "90d_PF": pf_90,
+                "90d_PF(地合い50%+)": pf_90_reg,
+                "判定": status,
+            }
+        )
+
+    console.print(f"\n[bold cyan]=== Model Health Check ({market} / 定期点検・連敗時再検証) ===[/bold cyan]")
+    print(pd.DataFrame(rows).to_string(index=False))
