@@ -31,6 +31,8 @@ def generate_stock_chart(
     entry_price: float | None = None,
     stop_price: float | None = None,
     target_price: float | None = None,
+    entry_date: str | None = None,
+    exit_date: str | None = None,
 ) -> Path:
     """
     指定した銘柄の直近N営業日のローソク足＋移動平均線(25/75/200)＋出来高＋RSI(14)を
@@ -231,6 +233,31 @@ def generate_stock_chart(
         va="top",
         bbox=bbox_props,
     )
+
+    # 垂直ライン（エントリー日・イグジット日：カンマ区切りで複数指定可）
+    date_strs = df.index.strftime("%Y-%m-%d").tolist()
+    y_top = float(df["High"].max())
+    for raw_dates, label, color in [
+        (entry_date, "Entry", "#2563eb"),
+        (exit_date, "Exit", "#9333ea"),
+    ]:
+        if not raw_dates:
+            continue
+        for d_str in [s.strip() for s in raw_dates.split(",") if s.strip()]:
+            if d_str in date_strs:
+                x_idx = date_strs.index(d_str)
+                ax_main.axvline(x=x_idx, color=color, linestyle="-.", linewidth=1.3, alpha=0.85)
+                ax_main.text(
+                    x_idx,
+                    y_top,
+                    f" {label}: {d_str[5:]}",
+                    color=color,
+                    fontsize=8.5,
+                    fontweight="bold",
+                    va="top",
+                    ha="left",
+                    bbox=dict(facecolor="white", alpha=0.8, edgecolor="none", pad=1.0),
+                )
 
     fig.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
