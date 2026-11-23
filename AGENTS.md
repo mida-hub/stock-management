@@ -4,3 +4,4 @@
 
 - **[docs/investment_philosophy.md](docs/investment_philosophy.md)**: 投資・トレードの基本哲学（引き算と資金管理）。指標を複雑に足し算せず、「全体相場の把握」「地雷銘柄の除外」「厳格な資金管理（許容損失 -6% / R/R 1:2以上）」を軸に判断・設計すること。
 - **[docs/backtest_experiments.md](docs/backtest_experiments.md)**: バックテスト検証ログ（採用・不採用ルール）。同じ不採用仮説を繰り返さないこと。
+- **[docs/investor_profile.md](docs/investor_profile.md)**: 投資家プロファイル（強みと弱点）。損切り躊躇時の「注意・忠告・警告」を行う際の根拠として参照すること。
